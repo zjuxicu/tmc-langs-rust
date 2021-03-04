@@ -8,7 +8,6 @@ license = "MIT OR Apache-2.0"
 
 [features]
 default = []
-
 server = ["tmc-langs-util/server"]
 
 [dependencies]
