@@ -93,7 +93,7 @@ jobs:
       - name: Sign
         run: codesign --force -s - target/release/tmc-langs-cli
       - name: Deploy
-        run: gsutil cp target/release/tmc-langs-cli gs://${{ secrets.GCP_BUCKET }}/tmc-langs-rust/tmc-langs-cli-${{ matrix.target }}-$TAG
+        run: gsutil cp target/${{ matrix.target }}/release/tmc-langs-cli gs://${{ secrets.GCP_BUCKET }}/tmc-langs-rust/tmc-langs-cli-${{ matrix.target }}-$TAG
 
   arm:
     runs-on: ubuntu-16.04
