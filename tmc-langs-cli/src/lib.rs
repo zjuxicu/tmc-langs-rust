@@ -253,27 +253,6 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
-        ("compress-project", Some(matches)) => {
-            let exercise_path = matches.value_of("exercise-path").unwrap();
-            let exercise_path = Path::new(exercise_path);
-
-            let output_path = matches.value_of("output-path").unwrap();
-            let output_path = Path::new(output_path);
-
-            file_util::lock!(exercise_path);
-
-            task_executor::compress_project_to(exercise_path, output_path)?;
-
-            let output = Output::finished_with_data(
-                format!(
-                    "compressed project from {} to {}",
-                    exercise_path.display(),
-                    output_path.display()
-                ),
-                None,
-            );
-            print_output(&output, pretty)?
-        }
         ("core", Some(matches)) => {
             let client_name = matches.value_of("client-name").unwrap();
 
@@ -329,31 +308,6 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
                     path.display()
                 ),
                 Data::FreeDiskSpace(free),
-            );
-            print_output(&output, pretty)?
-        }
-        ("extract-project", Some(matches)) => {
-            let archive_path = matches.value_of("archive-path").unwrap();
-            let archive_path = Path::new(archive_path);
-
-            let output_path = matches.value_of("output-path").unwrap();
-            let output_path = Path::new(output_path);
-
-            let mut archive = open_file_lock(archive_path)?;
-            let mut guard = archive.lock()?;
-
-            let mut data = vec![];
-            guard.read_to_end(&mut data)?;
-
-            task_executor::extract_project(Cursor::new(data), output_path, true)?;
-
-            let output = Output::finished_with_data(
-                format!(
-                    "extracted project from {} to {}",
-                    archive_path.display(),
-                    output_path.display()
-                ),
-                None,
             );
             print_output(&output, pretty)?
         }

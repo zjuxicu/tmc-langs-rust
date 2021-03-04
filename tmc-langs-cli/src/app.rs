@@ -50,20 +50,6 @@ pub fn create_app() -> App<'static, 'static> {
                 .required(true)
                 .takes_value(true)))
 
-        .subcommand(SubCommand::with_name("compress-project")
-            .about("Compresses the target exercise into a ZIP. Only includes student files using the student file policy of the exercise's plugin")
-            .long_about(SCHEMA_NULL)
-            .arg(Arg::with_name("exercise-path")
-                .help("Path to the directory where the exercise resides.")
-                .long("exercise-path")
-                .required(true)
-                .takes_value(true))
-            .arg(Arg::with_name("output-path")
-                .help("Path to the output ZIP archive. Overwritten if it already exists.")
-                .long("output-path")
-                .required(true)
-                .takes_value(true)))
-
         .subcommand(create_core_app()) // "core"
 
         .subcommand(
@@ -74,20 +60,6 @@ pub fn create_app() -> App<'static, 'static> {
                     .long("path")
                     .required(true)
                     .takes_value(true)))
-
-        .subcommand(SubCommand::with_name("extract-project")
-            .about("Extracts an exercise from a ZIP archive. If the output-path is a project root, the plugin's student file policy will be used to avoid overwriting student files")
-            .long_about(SCHEMA_NULL)
-            .arg(Arg::with_name("archive-path")
-                .help("Path to the ZIP archive.")
-                .long("archive-path")
-                .required(true)
-                .takes_value(true))
-            .arg(Arg::with_name("output-path")
-                .help("Path to the directory where the archive will be extracted.")
-                .long("output-path")
-                .required(true)
-                .takes_value(true)))
 
         .subcommand(SubCommand::with_name("fast-available-points")
             .about("Parses @Points notations from an exercise's exercise files and returns the point names found")
@@ -778,30 +750,8 @@ mod base_test {
     }
 
     #[test]
-    fn compress_project() {
-        get_matches(&[
-            "compress-project",
-            "--exercise-path",
-            "path",
-            "--output-path",
-            "path",
-        ]);
-    }
-
-    #[test]
     fn disk_space() {
         get_matches(&["disk-space", "--path", "path"]);
-    }
-
-    #[test]
-    fn extract_project() {
-        get_matches(&[
-            "extract-project",
-            "--archive-path",
-            "path",
-            "--output-path",
-            "path",
-        ]);
     }
 
     #[test]
