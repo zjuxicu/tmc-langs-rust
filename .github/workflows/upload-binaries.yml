@@ -26,7 +26,7 @@ jobs:
           sudo apt install -y gcc-multilib # required to build for 32-bit arch
       - name: Cargo build
         run: |
-          rustup target add i686-unknown-linux-gnu
+          rustup target add ${{ matrix.target }}
           cargo build -p tmc-langs-cli --release --verbose --target ${{ matrix.target }}
       - name: Deploy
         run: gsutil cp target/${{ matrix.target }}/release/tmc-langs-cli gs://${{ secrets.GCP_BUCKET }}/tmc-langs-rust/tmc-langs-cli-${{ matrix.target }}-$TAG
@@ -44,7 +44,7 @@ jobs:
           service_account_key: ${{ secrets.GCP_SA_KEY }}
       - name: Cargo build # crt-static is set with RUSTFLAGS to statically link MSVCRT (VCRUNTIME140.dll)
         run: |
-          rustup target add i686-pc-windows-msvc
+          rustup target add ${{ matrix.target }}
           $env:RUSTFLAGS="-C target-feature=+crt-static"
           cargo build -p tmc-langs-cli --release --verbose --target ${{ matrix.target }}
       - name: Deploy
