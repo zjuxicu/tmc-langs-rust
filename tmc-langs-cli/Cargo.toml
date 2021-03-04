@@ -9,7 +9,7 @@ license = "MIT OR Apache-2.0"
 [features]
 default = []
 
-server = []
+server = ["tmc-langs-util/server"]
 
 [dependencies]
 tmc-client = { path = "../tmc-client" }

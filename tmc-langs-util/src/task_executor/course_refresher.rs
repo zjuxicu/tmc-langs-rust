@@ -9,10 +9,7 @@ use std::{io::Write, time::Duration};
 use tmc_langs_framework::{command::TmcCommand, file_util};
 use walkdir::WalkDir;
 
-#[cfg(unix)]
 pub type ModeBits = nix::sys::stat::mode_t;
-#[cfg(not(unix))]
-pub type ModeBits = u32;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -324,13 +321,6 @@ fn execute_zip(
     Ok(())
 }
 
-#[cfg(not(unix))]
-fn set_permissions(_path: &Path) -> Result<(), UtilError> {
-    // NOP on non-Unix platforms
-    Ok(())
-}
-
-#[cfg(unix)]
 fn set_permissions(path: &Path) -> Result<(), UtilError> {
     use nix::sys::stat;
     use std::os::unix::io::AsRawFd;
@@ -364,7 +354,6 @@ fn finish_stage(message: impl Into<String>) {
 }
 
 #[cfg(test)]
-#[cfg(unix)] // not used on windows
 mod test {
     use std::io::Read;
 

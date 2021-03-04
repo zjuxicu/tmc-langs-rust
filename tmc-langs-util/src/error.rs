@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 use tmc_langs_framework::error::FileIo;
 
-#[cfg(unix)]
+#[cfg(feature = "server")]
 use crate::task_executor::ModeBits;
 
 #[derive(Debug, Error)]
@@ -51,15 +51,16 @@ pub enum UtilError {
     #[error(transparent)]
     Heim(#[from] heim::Error),
 
-    #[cfg(unix)]
-    #[error("Error changing permissions of {0}")]
-    NixPermissionChange(PathBuf, #[source] nix::Error),
-    #[cfg(unix)]
-    #[error("Invalid chmod flag: {0}")]
-    NixFlag(ModeBits),
-
     #[error(transparent)]
     DynError(#[from] Box<dyn 'static + std::error::Error + Sync + Send>),
+
+    // server-only errors
+    #[cfg(feature = "server")]
+    #[error("Error changing permissions of {0}")]
+    NixPermissionChange(PathBuf, #[source] nix::Error),
+    #[cfg(feature = "server")]
+    #[error("Invalid chmod flag: {0}")]
+    NixFlag(ModeBits),
 }
 
 #[derive(Debug, Error)]

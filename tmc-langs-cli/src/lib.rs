@@ -14,7 +14,7 @@ use self::output::{
     StatusUpdateData, UpdatedExercise,
 };
 use anyhow::{Context, Result};
-use clap::{ArgMatches, Error, ErrorKind};
+use clap::ArgMatches;
 use config::ConfigValue;
 use file_util::open_file_lock;
 use serde::Serialize;
@@ -43,14 +43,15 @@ use tmc_langs_framework::{
     file_util::{self, FileLockGuard},
     warning_reporter,
 };
-use tmc_langs_util::{
-    progress_reporter,
-    task_executor::{self, TmcParams},
-    Language, OutputFormat,
-};
+use tmc_langs_util::{progress_reporter, task_executor, Language};
 use toml::{map::Map as TomlMap, Value as TomlValue};
 use url::Url;
 use walkdir::WalkDir;
+#[cfg(feature = "server")]
+use {
+    clap::{Error, ErrorKind},
+    tmc_langs_util::{task_executor::TmcParams, OutputFormat},
+};
 
 // wraps the run_inner function that actually does the work and handles any panics that occur
 // any langs library should never panic by itself, but other libraries used may in some rare circumstances
@@ -370,6 +371,70 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
+        ("list-local-course-exercises", Some(matches)) => {
+            let client_name = matches.value_of("client-name").unwrap();
+
+            let course_slug = matches.value_of("course-slug").unwrap();
+
+            let local_exercises = config::list_local_course_exercises(client_name, course_slug)?;
+
+            let output = Output::finished_with_data(
+                format!("listed local exercises for {}", course_slug),
+                Data::LocalExercises(local_exercises),
+            );
+            print_output(&output, pretty)?
+        }
+        ("run-tests", Some(matches)) => {
+            let checkstyle_output_path = matches.value_of("checkstyle-output-path");
+            let checkstyle_output_path: Option<&Path> = checkstyle_output_path.map(Path::new);
+
+            let exercise_path = matches.value_of("exercise-path").unwrap();
+            let exercise_path = Path::new(exercise_path);
+
+            let locale = matches.value_of("locale");
+
+            let output_path = matches.value_of("output-path");
+            let output_path = output_path.map(Path::new);
+
+            file_util::lock!(exercise_path);
+
+            let test_result = task_executor::run_tests(exercise_path).with_context(|| {
+                format!(
+                    "Failed to run tests for exercise at {}",
+                    exercise_path.display()
+                )
+            });
+
+            let test_result = if env::var("TMC_SANDBOX").is_ok() {
+                // in sandbox, wrap error to signal we want to write the output into a file
+                test_result.map_err(|e| SandboxTestError {
+                    path: output_path.map(Path::to_path_buf),
+                    source: e,
+                })?
+            } else {
+                // not in sandbox, just unwrap
+                test_result?
+            };
+
+            if let Some(output_path) = output_path {
+                write_result_to_file_as_json(&test_result, output_path, pretty)?;
+            }
+
+            // todo: checkstyle results in stdout?
+            if let Some(checkstyle_output_path) = checkstyle_output_path {
+                let locale = into_locale(locale.unwrap())?;
+
+                run_checkstyle_write_results(exercise_path, Some(checkstyle_output_path), locale)?;
+            }
+
+            let output = Output::finished_with_data(
+                format!("ran tests for {}", exercise_path.display()),
+                Data::TestResult(test_result),
+            );
+            print_output(&output, pretty)?
+        }
+        ("settings", Some(matches)) => run_settings(matches, pretty)?,
+        #[cfg(feature = "server")]
         ("find-exercises", Some(matches)) => {
             let exercise_path = matches.value_of("exercise-path").unwrap();
             let exercise_path = Path::new(exercise_path);
@@ -397,6 +462,7 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
+        #[cfg(feature = "server")]
         ("get-exercise-packaging-configuration", Some(matches)) => {
             let exercise_path = matches.value_of("exercise-path").unwrap();
             let exercise_path = Path::new(exercise_path);
@@ -427,19 +493,7 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
-        ("list-local-course-exercises", Some(matches)) => {
-            let client_name = matches.value_of("client-name").unwrap();
-
-            let course_slug = matches.value_of("course-slug").unwrap();
-
-            let local_exercises = config::list_local_course_exercises(client_name, course_slug)?;
-
-            let output = Output::finished_with_data(
-                format!("listed local exercises for {}", course_slug),
-                Data::LocalExercises(local_exercises),
-            );
-            print_output(&output, pretty)?
-        }
+        #[cfg(feature = "server")]
         ("prepare-solutions", Some(matches)) => {
             let exercise_path = matches.value_of("exercise-path").unwrap();
             let exercise_path = Path::new(exercise_path);
@@ -466,6 +520,7 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
+        #[cfg(feature = "server")]
         ("prepare-stubs", Some(matches)) => {
             let exercise_path = matches.value_of("exercise-path").unwrap();
             let exercise_path = Path::new(exercise_path);
@@ -492,6 +547,7 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
+        #[cfg(feature = "server")]
         ("prepare-submission", Some(matches)) => {
             let clone_path = matches.value_of("clone-path").unwrap();
             let clone_path = Path::new(clone_path);
@@ -566,6 +622,7 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
+        #[cfg(feature = "server")]
         ("refresh-course", Some(matches)) => {
             let cache_path = matches.value_of("cache-path").unwrap();
             let cache_root = matches.value_of("cache-root").unwrap();
@@ -588,56 +645,7 @@ fn run_app(matches: ArgMatches, pretty: bool) -> Result<()> {
             );
             print_output(&output, pretty)?
         }
-        ("run-tests", Some(matches)) => {
-            let checkstyle_output_path = matches.value_of("checkstyle-output-path");
-            let checkstyle_output_path: Option<&Path> = checkstyle_output_path.map(Path::new);
-
-            let exercise_path = matches.value_of("exercise-path").unwrap();
-            let exercise_path = Path::new(exercise_path);
-
-            let locale = matches.value_of("locale");
-
-            let output_path = matches.value_of("output-path");
-            let output_path = output_path.map(Path::new);
-
-            file_util::lock!(exercise_path);
-
-            let test_result = task_executor::run_tests(exercise_path).with_context(|| {
-                format!(
-                    "Failed to run tests for exercise at {}",
-                    exercise_path.display()
-                )
-            });
-
-            let test_result = if env::var("TMC_SANDBOX").is_ok() {
-                // in sandbox, wrap error to signal we want to write the output into a file
-                test_result.map_err(|e| SandboxTestError {
-                    path: output_path.map(Path::to_path_buf),
-                    source: e,
-                })?
-            } else {
-                // not in sandbox, just unwrap
-                test_result?
-            };
-
-            if let Some(output_path) = output_path {
-                write_result_to_file_as_json(&test_result, output_path, pretty)?;
-            }
-
-            // todo: checkstyle results in stdout?
-            if let Some(checkstyle_output_path) = checkstyle_output_path {
-                let locale = into_locale(locale.unwrap())?;
-
-                run_checkstyle_write_results(exercise_path, Some(checkstyle_output_path), locale)?;
-            }
-
-            let output = Output::finished_with_data(
-                format!("ran tests for {}", exercise_path.display()),
-                Data::TestResult(test_result),
-            );
-            print_output(&output, pretty)?
-        }
-        ("settings", Some(matches)) => run_settings(matches, pretty)?,
+        #[cfg(feature = "server")]
         ("scan-exercise", Some(matches)) => {
             let exercise_path = matches.value_of("exercise-path").unwrap();
             let exercise_path = Path::new(exercise_path);

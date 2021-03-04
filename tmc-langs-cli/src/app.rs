@@ -13,7 +13,7 @@ use tmc_langs_framework::domain::*;
 /// Constructs the CLI root.
 pub fn create_app() -> App<'static, 'static> {
     // subcommand definitions are alphabetically ordered
-    App::new(env!("CARGO_PKG_NAME"))
+    let base_app = App::new(env!("CARGO_PKG_NAME"))
         .version(env!("CARGO_PKG_VERSION"))
         .author(env!("CARGO_PKG_AUTHORS"))
         .about(env!("CARGO_PKG_DESCRIPTION"))
@@ -22,6 +22,7 @@ pub fn create_app() -> App<'static, 'static> {
             .help("Pretty-prints all output")
             .long("pretty"))
 
+        // unused?
         .subcommand(SubCommand::with_name("checkstyle")
             .about("Checks the code style for the given exercise")
             .long_about(schema_leaked::<Option<StyleValidationResult>>())
@@ -72,8 +73,7 @@ pub fn create_app() -> App<'static, 'static> {
                     .help("A path in the partition that should be inspected.")
                     .long("path")
                     .required(true)
-                    .takes_value(true))
-        )
+                    .takes_value(true)))
 
         .subcommand(SubCommand::with_name("extract-project")
             .about("Extracts an exercise from a ZIP archive. If the output-path is a project root, the plugin's student file policy will be used to avoid overwriting student files")
@@ -97,6 +97,48 @@ pub fn create_app() -> App<'static, 'static> {
                 .long("exercise-path")
                 .required(true)
                 .takes_value(true)))
+
+        .subcommand(SubCommand::with_name("list-local-course-exercises")
+            .about("Returns a list of local exercises for the given course")
+            .long_about(schema_leaked::<Vec<LocalExercise>>())
+            .arg(Arg::with_name("client-name")
+                .help("The client for which exercises should be listed.")
+                .long("client-name")
+                .required(true)
+                .takes_value(true))
+            .arg(Arg::with_name("course-slug")
+                .help("The course slug the local exercises of which should be listed.")
+                .long("course-slug")
+                .required(true)
+                .takes_value(true)))
+
+        .subcommand(SubCommand::with_name("run-tests")
+            .about("Run the tests for the exercise using the appropriate language plugin")
+            .long_about(schema_leaked::<RunResult>())
+            .arg(Arg::with_name("checkstyle-output-path")
+                .help("Runs checkstyle if given. Path to the file where the style results will be written.")
+                .long("checkstyle-output-path")
+                .takes_value(true)
+                .requires("locale"))
+            .arg(Arg::with_name("exercise-path")
+                .help("Path to the directory where the exercise resides.")
+                .long("exercise-path")
+                .required(true)
+                .takes_value(true))
+            .arg(Arg::with_name("locale")
+                .help("Language as a three letter ISO 639-3 code, e.g. 'eng' or 'fin'. Required if checkstyle-output-path is given.")
+                .long("locale")
+                .takes_value(true))
+            .arg(Arg::with_name("output-path")
+                .help("If defined, the test results will be written to this path. Overwritten if it already exists.")
+                .long("output-path")
+                .takes_value(true)))
+
+        .subcommand(create_settings_app()); // "settings"
+
+    // add server-specific subcommands if the flag is on
+    if cfg!(feature = "server") {
+        base_app
 
         .subcommand(SubCommand::with_name("find-exercises")
             .about("Finds all exercise root directories inside the exercise-path")
@@ -122,20 +164,6 @@ pub fn create_app() -> App<'static, 'static> {
             .arg(Arg::with_name("output-path")
                 .help("If given, the configuration will be written to this path. Overwritten if it already exists.")
                 .long("output-path")
-                .takes_value(true)))
-
-        .subcommand(SubCommand::with_name("list-local-course-exercises")
-            .about("Returns a list of local exercises for the given course")
-            .long_about(schema_leaked::<Vec<LocalExercise>>())
-            .arg(Arg::with_name("client-name")
-                .help("The client for which exercises should be listed.")
-                .long("client-name")
-                .required(true)
-                .takes_value(true))
-            .arg(Arg::with_name("course-slug")
-                .help("The course slug the local exercises of which should be listed.")
-                .long("course-slug")
-                .required(true)
                 .takes_value(true)))
 
         .subcommand(SubCommand::with_name("prepare-solutions")
@@ -232,30 +260,6 @@ pub fn create_app() -> App<'static, 'static> {
                 .required(true)
                 .takes_value(true)))
 
-        .subcommand(SubCommand::with_name("run-tests")
-            .about("Run the tests for the exercise using the appropriate language plugin")
-            .long_about(schema_leaked::<RunResult>())
-            .arg(Arg::with_name("checkstyle-output-path")
-                .help("Runs checkstyle if given. Path to the file where the style results will be written.")
-                .long("checkstyle-output-path")
-                .takes_value(true)
-                .requires("locale"))
-            .arg(Arg::with_name("exercise-path")
-                .help("Path to the directory where the exercise resides.")
-                .long("exercise-path")
-                .required(true)
-                .takes_value(true))
-            .arg(Arg::with_name("locale")
-                .help("Language as a three letter ISO 639-3 code, e.g. 'eng' or 'fin'. Required if checkstyle-output-path is given.")
-                .long("locale")
-                .takes_value(true))
-            .arg(Arg::with_name("output-path")
-                .help("If defined, the test results will be written to this path. Overwritten if it already exists.")
-                .long("output-path")
-                .takes_value(true)))
-
-        .subcommand(create_settings_app()) // "settings"
-
         .subcommand(SubCommand::with_name("scan-exercise")
             .about("Produces a description of an exercise using the appropriate language plugin")
             .long_about(schema_leaked::<ExerciseDesc>())
@@ -268,6 +272,9 @@ pub fn create_app() -> App<'static, 'static> {
                 .help("If given, the scan results will be written to this path. Overwritten if it already exists.")
                 .long("output-path")
                 .takes_value(true)))
+    } else {
+        base_app
+    }
 }
 
 /// Constructs the core sub-command.
@@ -803,6 +810,42 @@ mod base_test {
     }
 
     #[test]
+    fn list_local_course_exercises() {
+        get_matches(&[
+            "list-local-course-exercises",
+            "--client-name",
+            "client",
+            "--course-slug",
+            "slug",
+        ]);
+    }
+
+    #[test]
+    fn run_tests() {
+        get_matches(&[
+            "run-tests",
+            "--checkstyle-output-path",
+            "path",
+            "--exercise-path",
+            "path",
+            "--locale",
+            "fi",
+            "--output-path",
+            "path",
+        ]);
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "server")]
+mod server_test {
+    use super::*;
+
+    fn get_matches(args: &[&str]) {
+        create_app().get_matches_from(&["tmc-langs-cli"].iter().chain(args).collect::<Vec<_>>());
+    }
+
+    #[test]
     fn find_exercises() {
         get_matches(&[
             "find-exercises",
@@ -821,17 +864,6 @@ mod base_test {
             "path",
             "--output-path",
             "path",
-        ]);
-    }
-
-    #[test]
-    fn list_local_course_exercises() {
-        get_matches(&[
-            "list-local-course-exercises",
-            "--client-name",
-            "client",
-            "--course-slug",
-            "slug",
         ]);
     }
 
@@ -892,21 +924,6 @@ mod base_test {
             "main",
             "--source-url",
             "example.com",
-        ]);
-    }
-
-    #[test]
-    fn run_tests() {
-        get_matches(&[
-            "run-tests",
-            "--checkstyle-output-path",
-            "path",
-            "--exercise-path",
-            "path",
-            "--locale",
-            "fi",
-            "--output-path",
-            "path",
         ]);
     }
 

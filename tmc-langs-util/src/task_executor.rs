@@ -1,19 +1,27 @@
 //! Module for calling different tasks of TMC-langs language plug-ins.
 
+#[cfg(feature = "server")]
 mod course_refresher;
+#[cfg(feature = "server")]
 mod submission_packaging;
+#[cfg(feature = "server")]
 mod submission_processing;
 mod tar_helper;
 mod tmc_zip;
 
-pub use self::course_refresher::{refresh_course, ModeBits, RefreshData, RefreshExercise};
-pub use self::submission_packaging::{prepare_submission, OutputFormat, TmcParams};
-pub use self::submission_processing::prepare_solution;
+#[cfg(feature = "server")]
+pub use {
+    self::course_refresher::{refresh_course, ModeBits, RefreshData, RefreshExercise},
+    self::submission_packaging::{prepare_submission, OutputFormat, TmcParams},
+    self::submission_processing::prepare_solution,
+    std::path::PathBuf,
+    walkdir::WalkDir,
+};
 
 use crate::error::UtilError;
 use crate::{ExerciseDesc, ExercisePackagingConfiguration, RunResult, StyleValidationResult};
 use heim::disk;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tmc_langs_csharp::CSharpPlugin;
 use tmc_langs_framework::{
     file_util,
@@ -27,18 +35,6 @@ use tmc_langs_make::MakePlugin;
 use tmc_langs_notests::NoTestsPlugin;
 use tmc_langs_python3::Python3Plugin;
 use tmc_langs_r::RPlugin;
-use walkdir::WalkDir;
-
-/// See `submission_processing::prepare_stub`.
-pub fn prepare_stub(exercise_path: &Path, dest_path: &Path) -> Result<(), UtilError> {
-    submission_processing::prepare_stub(&exercise_path, dest_path)?;
-
-    // The Ant plugin needs some additional files to be copied over.
-    if AntPlugin::is_exercise_type_correct(&exercise_path) {
-        AntPlugin::copy_tmc_junit_runner(dest_path).map_err(|e| TmcError::Plugin(Box::new(e)))?;
-    }
-    Ok(())
-}
 
 /// See `LanguagePlugin::check_code_style`.
 pub fn run_check_code_style(
@@ -185,27 +181,6 @@ pub fn clean(path: &Path) -> Result<(), UtilError> {
     Ok(())
 }
 
-/// Recursively searches for valid exercise directories in the path.
-pub fn find_exercise_directories(exercise_path: &Path) -> Result<Vec<PathBuf>, UtilError> {
-    log::info!(
-        "finding exercise directories in {}",
-        exercise_path.display()
-    );
-
-    let mut paths = vec![];
-    for entry in WalkDir::new(exercise_path).into_iter().filter_entry(|e| {
-        !submission_processing::is_hidden_dir(e)
-            && e.file_name() != "private"
-            && !submission_processing::contains_tmcignore(e)
-    }) {
-        let entry = entry?;
-        if is_exercise_root_directory(entry.path()) {
-            paths.push(entry.into_path())
-        }
-    }
-    Ok(paths)
-}
-
 /// Parses available exercise points from the exercise without compiling it.
 pub fn get_available_points(exercise_path: &Path) -> Result<Vec<String>, UtilError> {
     let points = get_language_plugin(exercise_path)?.get_available_points(exercise_path)?;
@@ -297,4 +272,40 @@ fn get_language_plugin(path: &Path) -> Result<Plugin, TmcError> {
     } else {
         Err(TmcError::PluginNotFound(path.to_path_buf()))
     }
+}
+
+// **** server only functions ****
+
+/// Recursively searches for valid exercise directories in the path.
+#[cfg(feature = "server")]
+pub fn find_exercise_directories(exercise_path: &Path) -> Result<Vec<PathBuf>, UtilError> {
+    log::info!(
+        "finding exercise directories in {}",
+        exercise_path.display()
+    );
+
+    let mut paths = vec![];
+    for entry in WalkDir::new(exercise_path).into_iter().filter_entry(|e| {
+        !submission_processing::is_hidden_dir(e)
+            && e.file_name() != "private"
+            && !submission_processing::contains_tmcignore(e)
+    }) {
+        let entry = entry?;
+        if is_exercise_root_directory(entry.path()) {
+            paths.push(entry.into_path())
+        }
+    }
+    Ok(paths)
+}
+
+/// See `submission_processing::prepare_stub`.
+#[cfg(feature = "server")]
+pub fn prepare_stub(exercise_path: &Path, dest_path: &Path) -> Result<(), UtilError> {
+    submission_processing::prepare_stub(&exercise_path, dest_path)?;
+
+    // The Ant plugin needs some additional files to be copied over.
+    if AntPlugin::is_exercise_type_correct(&exercise_path) {
+        AntPlugin::copy_tmc_junit_runner(dest_path).map_err(|e| TmcError::Plugin(Box::new(e)))?;
+    }
+    Ok(())
 }

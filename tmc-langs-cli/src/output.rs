@@ -9,9 +9,11 @@ use tmc_client::{
     SubmissionFeedbackResponse, SubmissionFinished, Token, UpdateResult,
 };
 use tmc_langs_framework::warning_reporter::Warning;
-use tmc_langs_util::{
-    progress_reporter::StatusUpdate, task_executor::RefreshData, ExerciseDesc,
-    ExercisePackagingConfiguration,
+use tmc_langs_util::progress_reporter::StatusUpdate;
+#[cfg(feature = "server")]
+use {
+    tmc_langs_util::task_executor::RefreshData,
+    tmc_langs_util::{ExerciseDesc, ExercisePackagingConfiguration},
 };
 
 use crate::config::{ConfigValue, TmcConfig};
@@ -58,15 +60,10 @@ pub enum Data {
         trace: Vec<String>,
     },
     Validation(StyleValidationResult),
-    /// megabytes
-    FreeDiskSpace(u64),
+    FreeDiskSpace(u64), // megabytes
     AvailablePoints(Vec<String>),
-    Exercises(Vec<PathBuf>),
-    ExercisePackagingConfiguration(ExercisePackagingConfiguration),
     LocalExercises(Vec<LocalExercise>),
-    RefreshResult(RefreshData),
     TestResult(RunResult),
-    ExerciseDesc(ExerciseDesc),
     UpdatedExercises(Vec<UpdatedExercise>),
     ExerciseDownload(DownloadOrUpdateCourseExercisesResult),
     CombinedCourseData(Box<CombinedCourseData>),
@@ -86,6 +83,16 @@ pub enum Data {
     SubmissionFinished(SubmissionFinished),
     ConfigValue(ConfigValue<'static>),
     TmcConfig(TmcConfig),
+
+    // server variants
+    #[cfg(feature = "server")]
+    Exercises(Vec<PathBuf>),
+    #[cfg(feature = "server")]
+    ExercisePackagingConfiguration(ExercisePackagingConfiguration),
+    #[cfg(feature = "server")]
+    RefreshResult(RefreshData),
+    #[cfg(feature = "server")]
+    ExerciseDesc(ExerciseDesc),
 }
 
 #[derive(Debug, Serialize)]
