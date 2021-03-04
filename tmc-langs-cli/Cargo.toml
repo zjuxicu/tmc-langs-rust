@@ -6,6 +6,11 @@ edition = "2018"
 description = "CLI client for TMC"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = []
+
+server = []
+
 [dependencies]
 tmc-client = { path = "../tmc-client" }
 tmc-langs-framework = { path = "../tmc-langs-framework" }

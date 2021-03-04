@@ -9,6 +9,24 @@ env:
   TAG: ${{ github.event.release.tag_name }} # had some issue using this directly on windows
 
 jobs:
+  server:
+    runs-on: ubuntu-16.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y gcc-multilib # required to build for 32-bit arch
+      - name: Cargo build
+        run: |
+          cargo build -p tmc-langs-cli --release --verbose --features server
+      - name: Deploy
+        run: gsutil cp target/${{ matrix.target }}/release/tmc-langs-cli gs://${{ secrets.GCP_BUCKET }}/tmc-langs-rust/tmc-langs-cli-server-$TAG
+
   linux:
     runs-on: ubuntu-16.04
     strategy:
