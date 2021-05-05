@@ -571,6 +571,7 @@ pub fn update_exercises(
             }
         }
         if !exercises_to_update.is_empty() {
+            println!("Updates found for something");
             for exercise in &exercises_to_update {
                 let copy = exercise.clone();
                 println!("Checking exercise {:?}", copy);
@@ -578,6 +579,7 @@ pub fn update_exercises(
                 client.download_exercise(exercise.id, zip_file.path())?;
                 extract_project(zip_file, &exercise.path, false)?;
                 let print = client.download_exercise(exercise.id, &exercise.path)?;
+                println!("Path: {:?}", &exercise.path);
                 println!("Result: {:?}", print);
             }
             for (course_name, exercise_names) in course_data {
