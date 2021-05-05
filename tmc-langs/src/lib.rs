@@ -575,8 +575,7 @@ pub fn update_exercises(
                 let copy = exercise.clone();
                 println!("Checking exercise {:?}", copy);
                 let print = client
-                    .download_exercise(exercise.id, &exercise.path)
-                    .unwrap();
+                    .download_exercise(exercise.id, &exercise.path)?;
                 println!("{:?}", print);
             }
             for (course_name, exercise_names) in course_data {
