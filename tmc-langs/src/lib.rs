@@ -572,7 +572,8 @@ pub fn update_exercises(
         }
         if !exercises_to_update.is_empty() {
             for exercise in &exercises_to_update {
-                println!("Checking exercise {}", exercise);
+                let copy = exercise.clone();
+                println!("Checking exercise {:?}", copy);
                 let print = client
                     .download_exercise(exercise.id, &exercise.path)
                     .unwrap();
