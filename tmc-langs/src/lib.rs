@@ -588,6 +588,10 @@ pub fn update_exercises(
                 }
 
                 if let Some(course_config) = projects_config.courses.get_mut(&course_name) {
+                    println!(
+                        "Mitä syönyt projects_config: {}",
+                        projects_config.courses.get_mut(&course_name)
+                    );
                     course_config.exercises.extend(exercises);
                     course_config.save_to_projects_dir(&projects_dir)?;
                 } else {
