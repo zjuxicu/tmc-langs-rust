@@ -589,7 +589,7 @@ pub fn update_exercises(
 
                 if let Some(course_config) = projects_config.courses.get_mut(&course_name) {
                     println!(
-                        "Mitä syönyt projects_config: {}",
+                        "Mitä syönyt projects_config: {:#?}",
                         projects_config.courses.get_mut(&course_name)
                     );
                     course_config.exercises.extend(exercises);
