@@ -584,14 +584,11 @@ pub fn update_exercises(
             for (course_name, exercise_names) in course_data {
                 let mut exercises = BTreeMap::new();
                 for (exercise_name, checksum, id) in exercise_names {
+                    println!("Debug ID: {:?}", &id);
                     exercises.insert(exercise_name, ProjectsDirExercise { id, checksum });
                 }
 
                 if let Some(course_config) = projects_config.courses.get_mut(&course_name) {
-                    println!(
-                        "Mitä syönyt projects_config: {:#?}",
-                        projects_config.courses.get_mut(&course_name)
-                    );
                     course_config.exercises.extend(exercises);
                     course_config.save_to_projects_dir(&projects_dir)?;
                 } else {
