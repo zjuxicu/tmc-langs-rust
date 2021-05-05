@@ -574,8 +574,10 @@ pub fn update_exercises(
             for exercise in &exercises_to_update {
                 let copy = exercise.clone();
                 println!("Checking exercise {:?}", copy);
-                let print = client
-                    .download_exercise(exercise.id, &exercise.path)?;
+                let zip_file = file_util::named_temp_file()?;
+                client.download_exercise(exercise.id, zip_file.path())?;
+                extract_project(zip_file, &exercise.path, false)?;
+                let print = client.download_exercise(exercise.id, &exercise.path)?;
                 println!("{:?}", print);
             }
             for (course_name, exercise_names) in course_data {
