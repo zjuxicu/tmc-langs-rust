@@ -577,7 +577,9 @@ pub fn update_exercises(
                 println!("Checking exercise {:?}", copy);
                 let zip_file = file_util::named_temp_file()?;
                 client.download_exercise(exercise.id, zip_file.path())?;
+                println!("Dowload tehty!");
                 extract_project(zip_file, &exercise.path, false)?;
+                println!("Extract tehty!");
                 let print = client.download_exercise(exercise.id, &exercise.path)?;
                 println!("Path: {:?}", &exercise.path);
                 println!("Result: {:?}", print);
