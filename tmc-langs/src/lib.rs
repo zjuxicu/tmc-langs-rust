@@ -580,9 +580,6 @@ pub fn update_exercises(
                 println!("Dowload tehty!");
                 extract_project(zip_file, &exercise.path, false)?;
                 println!("Extract tehty!");
-                let print = client.download_exercise(exercise.id, &exercise.path)?;
-                println!("Path: {:?}", &exercise.path);
-                println!("Result: {:?}", print);
             }
             for (course_name, exercise_names) in course_data {
                 let mut exercises = BTreeMap::new();
