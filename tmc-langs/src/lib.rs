@@ -572,6 +572,14 @@ pub fn update_exercises(
                     checksum: server_exercise.checksum,
                 };
             }
+            course_data
+                .get_mut(&server_exercise.course_name.clone())
+                .unwrap()
+                .push((
+                    server_exercise.exercise_name.clone(),
+                    local_exercise.checksum.clone(),
+                    local_exercise.id,
+                ));
         }
         if !exercises_to_update.is_empty() {
             for exercise in &exercises_to_update {
