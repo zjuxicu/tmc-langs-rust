@@ -525,10 +525,13 @@ pub fn update_exercises(
     log::debug!("updating exercises in {}", projects_dir.display());
 
     let mut exercises_to_update = vec![];
-    let course_data = HashMap::<String, Vec<(String, String, usize)>>::new();
+    let mut course_data = HashMap::<String, Vec<(String, String, usize)>>::new();
 
     let mut projects_config = ProjectsConfig::load(&projects_dir)?;
-
+    for course in &projects_config.courses {
+        course_data.insert(course.1.course.clone(), vec![]);
+        println!("Lisättiin kurssi: {:?}", course);
+    }
     let local_exercises = projects_config
         .courses
         .iter_mut()
@@ -571,20 +574,15 @@ pub fn update_exercises(
             }
         }
         if !exercises_to_update.is_empty() {
-            println!("Updates found for something");
             for exercise in &exercises_to_update {
-                let copy = exercise.clone();
-                println!("Checking exercise {:?}", copy);
                 let zip_file = file_util::named_temp_file()?;
                 client.download_exercise(exercise.id, zip_file.path())?;
-                println!("Dowload tehty!");
                 extract_project(zip_file, &exercise.path, false)?;
-                println!("Extract tehty!");
             }
+            println!("CourseData: {:?}", &course_data);
             for (course_name, exercise_names) in course_data {
                 let mut exercises = BTreeMap::new();
                 for (exercise_name, checksum, id) in exercise_names {
-                    println!("Debug ID: {:?}", &id);
                     exercises.insert(exercise_name, ProjectsDirExercise { id, checksum });
                 }
 
